@@ -1,3 +1,5 @@
+# downloads youtube clips according to a start and end timestamp
+
 import yt_dlp
 
 def download_clips(video_links):
