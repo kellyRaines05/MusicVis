@@ -2,6 +2,28 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class SoundToImage(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(4, 128),
+            nn.ReLU(),
+            nn.Linear(128, 8*8*64),
+            nn.ReLU()
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(64, 32, 4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 3, 4, stride=2, padding=1),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, x):
+        x = self.fc(x)
+        x = x.view(-1, 64, 8, 8)
+        x = self.decoder(x)
+        return x
+
 class UNet(nn.Module):
     def __init__(self):
         super(UNet, self).__init__()
