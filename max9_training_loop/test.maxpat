@@ -4,16 +4,27 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 3,
+			"revision" : 7,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 34.0, 43.0, 1468.0, 739.0 ],
+		"rect" : [ 34.0, 43.0, 1452.0, 963.0 ],
 		"gridsize" : [ 15.0, 15.0 ],
 		"toolbars_unpinned_last_save" : 2,
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-46",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 1285.0, 333.0, 100.0, 22.0 ]
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-47",
 					"maxclass" : "newobj",
@@ -537,8 +548,8 @@
 					"id" : "obj-6",
 					"maxclass" : "newobj",
 					"numinlets" : 1,
-					"numoutlets" : 9,
-					"outlettype" : [ "list", "float", "float", "float", "list", "bang", "list", "list", "FullPacket" ],
+					"numoutlets" : 8,
+					"outlettype" : [ "", "", "", "", "", "", "", "" ],
 					"patching_rect" : [ 1072.0, 353.0, 103.0, 22.0 ],
 					"text" : "analyzer~"
 				}
@@ -564,8 +575,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "int" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 3653.333507537841797, 667.666674613952637, 24.0, 24.0 ],
-					"svg" : ""
+					"patching_rect" : [ 3653.333507537841797, 667.666674613952637, 24.0, 24.0 ]
 				}
 
 			}
@@ -755,8 +765,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "int" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 918.0, 332.222238063812256, 24.0, 24.0 ],
-					"svg" : ""
+					"patching_rect" : [ 918.0, 332.222238063812256, 24.0, 24.0 ]
 				}
 
 			}
@@ -995,7 +1004,7 @@
 					"outlettype" : [ "int", "", "" ],
 					"parameter_enable" : 0,
 					"patching_rect" : [ 956.0, 169.0, 252.0, 22.0 ],
-					"prefix" : "~/Programming/Music-Synthesis/music-clips/"
+					"prefix" : "~/Programming/MusicVis/music_clips/"
 				}
 
 			}
@@ -1199,7 +1208,7 @@
 					"outlettype" : [ "int", "", "" ],
 					"parameter_enable" : 0,
 					"patching_rect" : [ 173.333341598510742, 165.555563449859619, 252.0, 22.0 ],
-					"prefix" : "~/Programming/Music-Synthesis/music-images/"
+					"prefix" : "~/Programming/MusicVis/music_images/"
 				}
 
 			}
@@ -2176,13 +2185,8 @@
 
 			}
  ],
-		"originid" : "pat-6",
 		"dependency_cache" : [ 			{
 				"name" : "OpenSoundControl.mxe64",
-				"type" : "mx64"
-			}
-, 			{
-				"name" : "analyzer~.mxe64",
 				"type" : "mx64"
 			}
  ],
