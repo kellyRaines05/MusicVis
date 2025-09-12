@@ -6,10 +6,8 @@ model = "htdemucs_6s"
 
 def stem_song(file):
     demucs.separate.main(shlex.split(f'-n {model} {file}'))
-
     output = file.split("/")
     return f"separated/{model}/{output[len(output) - 1]}"
-     
 
 def detect_silence(file):
     myaudio = AudioSegment.from_wav(file)
