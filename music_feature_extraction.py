@@ -16,19 +16,19 @@ def detect_velocity(audio, sr):
     return np.max(onset_env)
 
 def detect_centroid(audio, sr):
-    cent = librosa.feature.spectral_centroid(y=audio, sr=sr)
-    return np.mean(cent)
+    return librosa.feature.spectral_centroid(y=audio, sr=sr)
 
 def estimate_tempo(audio, sr):
     onset_env = librosa.onset.onset_strength(y=audio, sr=sr)
     tempo = librosa.feature.tempo(onset_envelope=onset_env, sr=sr)
     return tempo[0]
 
-def get_features(file):
+def get_features(file, time_chunk=4):
     sr = librosa.get_samplerate(file)
     frame_length = 2048
     hop_length = 512
-    stream = librosa.stream(file, block_length=256, frame_length=frame_length, hop_length=hop_length, mono=True, dtype=np.float32)
+    block_length = int((sr * time_chunk) / hop_length)
+    stream = librosa.stream(file, block_length=block_length, frame_length=frame_length, hop_length=hop_length, mono=True, dtype=np.float32)
 
     with ThreadPoolExecutor(max_workers=15) as executor:
         for y in stream:

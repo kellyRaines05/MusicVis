@@ -1,13 +1,10 @@
-import numpy as np
-import librosa
-from sklearn import RandomForestClassifier
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class SoundClassifier(nn.Module):
+class SourceClassifier(nn.Module):
     def __init__(self, input_channels, num_classes):
-        super(SoundClassifier, self).__init__()
+        super(SourceClassifier, self).__init__()
         self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=3)
         self.pool1 = nn.MaxPool2d(kernel_size=2)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3)
@@ -38,35 +35,13 @@ class SoundClassifier(nn.Module):
         x = self.fc2(x)
         return x
 
-training_folder = "c:/Users/18155/Programming/nsynth_dataset/nsynth-train/audio"
-validation_folder = "c:/Users/18155/Programming/nsynth_dataset/nsynth-valid/audio"
-testing_folder = "c:/Users/18155/Programming/nsynth_dataset/nsynth-test/audio"
 
-
-instrument_families = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  # bass, brass, flute, guitar, keyboard, mallet, organ, reed, string, synth_lead, vocal
-note_qualities = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] # bright, dark, distortion, fast_decay, long_release, multiphonic, nonlinear_env, percussive, reverb, tempo-synced
-
-
-
-def train_source_classifier():
-    instrument_sources = [0, 1, 2] # acoustic, electric, synthetic
-    model = SoundClassifier(input_channels=1, num_classes=len(instrument_sources))
-
+class MusicVis(nn.Module):
+    def __init__(self, input_channels=7, output_channels=3):
     
-    return
-
-def train_family_classifier():
-    return
-
-def train_quality_classifier():
-    return
-
-
-sr = librosa.get_samplerate(file)
-frame_length = 2048
-hop_length = 512
-stream = librosa.stream(file, block_length=256, frame_length=frame_length, hop_length=hop_length, mono=True, dtype=np.float32)
-
-n_mels = 128
-mel_spectrogram = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels)
-mel_spectrogram_db = librosa.power_to_db(mel_spectrogram, ref=np.max)
+    # should have memory of previous images generated within the same song!
+    # low resolution --> 32x32x3
+    # upscale --> 1024x1024x3
+        return
+    def forward(self, x):
+        return
