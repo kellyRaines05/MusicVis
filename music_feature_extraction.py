@@ -1,6 +1,5 @@
 import crepe
 import numpy as np
-import time
 import librosa
 from concurrent.futures import ThreadPoolExecutor
 
@@ -16,7 +15,8 @@ def detect_velocity(audio, sr):
     return np.max(onset_env)
 
 def detect_centroid(audio, sr):
-    return librosa.feature.spectral_centroid(y=audio, sr=sr)
+    cent = librosa.feature.spectral_centroid(y=audio, sr=sr)
+    return np.mean(cent)
 
 def estimate_tempo(audio, sr):
     onset_env = librosa.onset.onset_strength(y=audio, sr=sr)
@@ -45,10 +45,3 @@ def get_features(file, time_chunk=4):
             }
             
             yield chunk_features
-
-start = time.time()
-file = "C:/Users/18155/Programming/MusicVis/separated/htdemucs_6s/s006_2/piano.wav"
-for i, features in enumerate(get_features(file)):
-    print(f"Chunk {i+1}")
-    print(features)
-print(time.time() - start)
