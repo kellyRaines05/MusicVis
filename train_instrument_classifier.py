@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 from music_feature_extraction import *
 from torch.utils.data import DataLoader
-from models import Data, SoundClassifier, MusicVis
+from models import InstrumentData, InstrumentClassifier
 
 training_folder = "all_data/training_data"
 validation_folder = "all_data/validation_data"
@@ -26,11 +26,14 @@ def evaluate_model(model, dataloader):
     with torch.no_grad():
         for batch_X, batch_y_source, batch_y_family in dataloader:
             preds = model(batch_X)
-            source_outputs = torch.argmax(preds["source_logits"], dim=1)
-            family_outputs = torch.argmax(preds["family_logits"], dim=1)
+            source_outputs = preds["source_logits"]
+            family_outputs = preds["family_logits"]
 
-            source_preds.append(source_outputs.cpu().numpy())
-            family_preds.append(family_outputs.cpu().numpy())
+            source_pred_classes = torch.argmax(source_outputs, dim=1)
+            family_pred_classes = torch.argmax(family_outputs, dim=1)
+
+            source_preds.append(source_pred_classes.cpu().numpy())
+            family_preds.append(family_pred_classes.cpu().numpy())
 
             source_targets.append(batch_y_source.cpu().numpy())
             family_targets.append(batch_y_family.cpu().numpy())
@@ -47,8 +50,8 @@ def evaluate_model(model, dataloader):
 
     return y_source_preds, y_family_preds, y_source_true, y_family_true, source_score, family_source
 
-def train_classifier(epochs=10, batch_size=64):
-    model = SoundClassifier()
+def train_instrument_classifier(epochs=10, batch_size=64):
+    model = InstrumentClassifier()
     
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -63,8 +66,8 @@ def train_classifier(epochs=10, batch_size=64):
     y_source_validation_path = f"{validation_folder}/y_source.npy"
     y_family_validation_path = f"{validation_folder}/y_family.npy"
     
-    train_dataloader = DataLoader(dataset=Data(spectrograms_train_path, y_source_train_path, y_family_train_path), batch_size=batch_size, shuffle=True)
-    validation_dataloader = DataLoader(dataset=Data(spectrograms_validation_path, y_source_validation_path, y_family_validation_path), batch_size=batch_size, shuffle=True)
+    train_dataloader = DataLoader(dataset=InstrumentData(spectrograms_train_path, y_source_train_path, y_family_train_path), batch_size=batch_size, shuffle=True)
+    validation_dataloader = DataLoader(dataset=InstrumentData(spectrograms_validation_path, y_source_validation_path, y_family_validation_path), batch_size=batch_size, shuffle=True)
     
     model.train()
     for epoch in range(epochs):
@@ -92,21 +95,15 @@ def train_classifier(epochs=10, batch_size=64):
         torch.save(model.state_dict(), "models/instrument_classification_full.pth")
     return model
 
-def train_quality_classifier():
-    return
-
-def train_image_generator():
-    return
-
 def test_model(model_path, batch_size=64):
     state_dict = torch.load(model_path)
-    model = SoundClassifier()
+    model = InstrumentClassifier()
     model.load_state_dict(state_dict)
 
     spectrograms_path = f"{testing_folder}/spectrograms.npy"
     y_source_test_path = f"{testing_folder}/y_source.npy"
     y_family_test_path = f"{testing_folder}/y_family.npy"
-    testing_dataloader = DataLoader(dataset=Data(spectrograms_path, y_source_test_path, y_family_test_path), batch_size=batch_size, shuffle=True)
+    testing_dataloader = DataLoader(dataset=InstrumentData(spectrograms_path, y_source_test_path, y_family_test_path), batch_size=batch_size, shuffle=True)
 
     y_source_preds, y_family_preds, y_source_true, y_family_true, source_score, family_source = evaluate_model(model, testing_dataloader)
 
@@ -131,5 +128,5 @@ def test_model(model_path, batch_size=64):
     print(f"Model Accuracy on test set (source): {source_score}")
     print(f"Model Accuracy on test set (family): {family_source}")
 
-train_classifier()
-# test_model("C:/Users/18155/Programming/MusicVis/models/instrument_classification.pth")
+# train_instrument_classifier()
+test_model("C:/Users/18155/Programming/MusicVis/models/instrument_classification_full.pth")

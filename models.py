@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 
-class Data(Dataset):
+class InstrumentData(Dataset):
     def __init__(self, spectrograms_path, y_source_path, y_family_path):
         self.spectrograms = np.load(spectrograms_path, mmap_mode='r')
         self.y_source = np.load(y_source_path, mmap_mode='r')
@@ -23,10 +23,27 @@ class Data(Dataset):
 
     def __len__(self):
         return self.len
+    
+class QualityData(Dataset):
+    def __init__(self, spectrograms_path, quality_path):
+        self.spectrograms = np.load(spectrograms_path, mmap_mode='r')
+        self.quality = np.load(quality_path, mmap_mode='r')
+        self.len = self.spectrograms.shape[0]
 
-class SoundClassifier(nn.Module):
+    def __getitem__(self, index):
+        x = np.copy(self.spectrograms[index])
+        quality = self.quality[index]
+
+        x = torch.from_numpy(x).float().unsqueeze(0).repeat(3, 1, 1)
+        quality = torch.tensor(quality).float()
+        return x, quality
+
+    def __len__(self):
+        return self.len
+
+class InstrumentClassifier(nn.Module):
     def __init__(self, num_families=11, num_sources=3):
-        super(SoundClassifier, self).__init__()
+        super(InstrumentClassifier, self).__init__()
         
         self.cnn = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
@@ -73,12 +90,44 @@ class SoundClassifier(nn.Module):
             "family_logits": family_logits
         }
 
-class MusicVis(nn.Module):
-    def __init__(self, input_channels=7, output_channels=3):
-    
-    # should have memory of previous images generated within the same song!
-    # low resolution --> 32x32x3
-    # upscale --> 1024x1024x3
-        return
+class QualityClassifier(nn.Module):
+    def __init__(self, num_qualities=4):
+        super(QualityClassifier, self).__init__()
+
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+
+            nn.AdaptiveAvgPool2d((2, 2)),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(256 * 2 * 2, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, num_qualities)
+        )
+
     def forward(self, x):
-        return
+        x = self.features(x)
+        x = self.classifier(x)
+        return x

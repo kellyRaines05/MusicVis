@@ -1,8 +1,9 @@
 import demucs.separate
 import shlex
 from pydub import AudioSegment, silence
+import time
 
-model = "htdemucs_6s"
+model = "htdemucs_ft"
 
 def stem_song(file):
     demucs.separate.main(shlex.split(f'-n {model} {file}'))
@@ -19,3 +20,8 @@ def detect_silence(file):
     else:
         print(silence_times)
         return False
+
+start = time.time()
+stem_song("C:/Users/18155/Programming/MusicVis/all_data/music_clips/s003.wav")
+end = time.time()
+print("Time taken:", end - start)

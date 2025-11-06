@@ -60,12 +60,31 @@ def get_all_data(folder, file_prefix):
 
     y_source = np.array([item['source'] for item in labels], dtype=np.float32)
     y_family = np.array([item['family'] for item in labels], dtype=np.float32)
+    y_quality = np.array([item['quality'] for item in labels], dtype=np.float32)
     
     np.save(f"{file_prefix}/y_source.npy", y_source)
     np.save(f"{file_prefix}/y_family.npy", y_family)
+    np.save(f"{file_prefix}/quality.npy", y_quality)
     np.save(f"{file_prefix}/spectrograms.npy", np.array(spectrograms))
     
     return spectrograms, labels
+
+def clip_quality_labels(file_prefix, quality_labels_path):
+    target_indices = [0, 1, 7, 8]  # bright, dark, percussive, reverb
+    spectrograms = np.load(f"{file_prefix}/spectrograms.npy")
+    qualities = np.load(quality_labels_path)
+
+    qualities = qualities[:, target_indices]
+    mask = qualities.sum(axis=1) > 0
+
+    spectrograms_filtered = spectrograms[mask]
+    qualities_filtered = qualities[mask]
+
+    print(f"Before filtering: {spectrograms.shape[0]}")
+    print(f"After filtering: {spectrograms_filtered.shape[0]}")
+
+    np.save(f"{file_prefix}/spectrograms_filtered.npy", spectrograms_filtered)
+    np.save(f"{file_prefix}/quality_subset.npy", qualities_filtered)
 
 if __name__ == '__main__':
     training_folder = "c:/Users/18155/Programming/nsynth_dataset/nsynth-train/"
@@ -74,3 +93,7 @@ if __name__ == '__main__':
 
     spectrograms, labels = get_all_data(training_folder, "all_data/training_data")
     print(f"Loaded {len(labels)} labels.")
+
+    clip_quality_labels("all_data/training_data", "all_data/training_data/quality.npy")
+    clip_quality_labels("all_data/validation_data", "all_data/validation_data/quality.npy")
+    clip_quality_labels("all_data/testing_data", "all_data/testing_data/quality.npy")
