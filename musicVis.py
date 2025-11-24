@@ -1,33 +1,47 @@
-import librosa
-import numpy as np
-import pyaudio
+"""
+Music Visualization: Visualizes music characteristics using fine-grained texture generation based on cross-modal correspondences.
 
-def play_slowed_audio(input_file, rate):
-    p = pyaudio.PyAudio()
-    try:
-        y, sr = librosa.load(input_file, sr=None)
-        y_stretched = librosa.effects.time_stretch(y, rate=rate)
-        y_int16 = (y_stretched * 32767).astype(np.int16)
-        print("PLAYING SONG")
-        stream = p.open(format=pyaudio.paInt16,
-                    channels=1,
-                    rate=sr,
-                    output=True)
-        
-        stream.write(y_int16.tobytes())
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
-    except FileNotFoundError:
-        print(f"Error: The file {input_file} was not found.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+Functions:
+    - musicVis(): main function orchestrating the process of music visualization.
+    - map_features(): maps visual characteristics based on extracted music features and displays them.
+"""
 
-input_audio = "C:/Users/kelly/Programming/Music-Synthesis/music_clips/s015.wav"
-slow_down_rate = 0.97
-play_slowed_audio(input_file=input_audio, rate=slow_down_rate)
+import time
+from IPython.display import display, clear_output
+import matplotlib.pyplot as plt
+from algorithmic_art_characteristics import *
+from music_feature_extraction import *
+from stem_music import *
 
-# # use trained model generator
-# music_file = ""
-# model = ""
-# model.predict(music_file)
+def map_features(input_music: str):
+    features = get_features(input_music, time_chunk=4)
+
+
+def musicVis(input_music: str):
+    stemmed_file = stem_song(input_music)
+    is_silent = detect_silence(stemmed_file)
+    if is_silent:
+        print("The input audio is silent. Exiting visualization.")
+        return
+    
+
+
+def transition_frames(img1, img2, steps=30):
+    img1_f = img1.astype(np.float32)
+    img2_f = img2.astype(np.float32)
+
+    frames = []
+    for i in range(steps):
+        alpha = i / (steps - 1)
+        frame = (1 - alpha) * img1_f + alpha * img2_f
+        frames.append(frame.astype(np.uint8))
+    return frames
+
+def show_transition(frames, delay=0.03):
+    plt.figure(figsize=(4,4))
+    for frame in frames:
+        clear_output(wait=True)
+        plt.imshow(frame)
+        plt.axis('off')
+        display(plt.gcf())
+        time.sleep(delay)

@@ -1,3 +1,12 @@
+"""
+Train and evaluate an instrument classification model using spectrogram data.
+
+Functions:
+    - evaluate_model(): Evaluates the model on the provided dataloader
+    - train_instrument_classifier(): Trains the instrument classification model.
+    - test_model(): Tests the trained model and displays confusion matrices.
+"""
+
 import torch
 import numpy as np
 import torch.nn as nn
@@ -129,4 +138,4 @@ def test_model(model_path, batch_size=64):
     print(f"Model Accuracy on test set (family): {family_source}")
 
 # train_instrument_classifier()
-test_model("C:/Users/18155/Programming/MusicVis/models/instrument_classification_full.pth")
+# test_model("C:/Users/18155/Programming/MusicVis/models/instrument_classification_full.pth")

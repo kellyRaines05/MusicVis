@@ -1,10 +1,26 @@
+"""
+All feature extraction functions for high-level music characteristics.
+
+This includes pitch detection, velocity detection, spectral centroid calculation, tempo estimation,
+instrument source (acoustic, synthetic, electric), instrument family classification, and quality classification.
+
+Functions:
+- detect_pitch(): Detects the predominant pitches in the audio and returns them as MIDI note numbers.
+- detect_velocity(): Estimates the velocity (loudness) of the audio.
+- detect_centroid(): Calculates the spectral centroid of the audio.
+- estimate_tempo(): Estimates the tempo (BPM) of the audio.
+- detect_instrument(): Classifies the instrument source and family using a pre-trained model.
+- detect_quality(): Classifies the quality of the audio using a pre-trained model.
+- get_features(): Processes an audio file in chunks and extracts all features concurrently.
+"""
+
 import crepe
 import numpy as np
 import librosa
 import torch
-from concurrent.futures import ThreadPoolExecutor
 from models import *
 from preprocess_data import get_spectrograms
+# from concurrent.futures import ThreadPoolExecutor
 
 def detect_pitch(audio, sr):
     _, frequency, _, _ = crepe.predict(audio, sr, model_capacity="small", step_size=150, viterbi=True)
@@ -55,38 +71,54 @@ def detect_quality(audio, sr):
 
     return output
 
-def detect_classifier_features(audio):
-    instrument_sources, instrument_families = detect_instrument(audio)
-    quality = detect_quality(audio)
-
-
 def get_features(file, time_chunk=4):
-    sr = librosa.get_samplerate(file)
-    frame_length = 2048
-    hop_length = 512
-    block_length = int((sr * time_chunk) / hop_length)
-    stream = librosa.stream(file, block_length=block_length, frame_length=frame_length, hop_length=hop_length, mono=True, dtype=np.float32)
-    for y in stream:
-        quality = detect_quality(y, sr)
-        instrument_sources, instrument_families = detect_instrument(y, sr)
-        print("Instruments Source:", instrument_sources)
-        print("Instruments Family:", instrument_families)
-        print("Quality:", quality)
-        
-    # with ThreadPoolExecutor(max_workers=15) as executor:
-    #     for y in stream:
-    #         notes = executor.submit(detect_pitch, y, sr)
-    #         velocity = executor.submit(detect_velocity, y, sr)
-    #         centroid = executor.submit(detect_centroid, y, sr)
-    #         tempo = executor.submit(estimate_tempo, y, sr)
+    y, sr = librosa.load(file, sr=None)
+    notes = detect_pitch(y, sr)
+    velocity = detect_velocity(y, sr)
+    centroid = detect_centroid(y, sr)
+    tempo = estimate_tempo(y, sr)
+    quality = detect_quality(y, sr)
+    instrument = detect_instrument(y, sr)
 
-    #         chunk_features = {
-    #             'notes': notes.result(),
-    #             'velocity': velocity.result(),
-    #             'centroid': centroid.result(),
-    #             'tempo': tempo.result()
-    #         }
+    chunk_features = MusicFeatures(
+        notes,
+        velocity,
+        centroid,
+        tempo,
+        quality,
+        instrument[0],
+        instrument[1]
+    )
+
+    
+
+
+
+# Streamed version of get_features for attempting real-time processing
+# def get_features(file, time_chunk=4):
+#     sr = librosa.get_samplerate(file)
+#     frame_length = 2048
+#     hop_length = 512
+#     block_length = int((sr * time_chunk) / hop_length)
+#     stream = librosa.stream(file, block_length=block_length, frame_length=frame_length, hop_length=hop_length, mono=True, dtype=np.float32)
+
+#     with ThreadPoolExecutor(max_workers=15) as executor:
+#         for y in stream:
+#             notes = executor.submit(detect_pitch, y, sr)
+#             velocity = executor.submit(detect_velocity, y, sr)
+#             centroid = executor.submit(detect_centroid, y, sr)
+#             tempo = executor.submit(estimate_tempo, y, sr)
+#             quality = executor.submit(detect_quality, y, sr)
+#             instrument = executor.submit(detect_instrument, y, sr)
+
+#             chunk_features = MusicFeatures(
+#                 notes,
+#                 velocity,
+#                 centroid,
+#                 tempo,
+#                 quality,
+#                 instrument.result()[0],
+#                 instrument.result()[1]
+#             )
             
-    #         yield chunk_features
-
-get_features("C:/Users/18155/Programming/MusicVis/separated/htdemucs_ft/s003/other.wav")
+#             yield chunk_features

@@ -1,3 +1,13 @@
+"""
+Preprocess audio data to extract spectrograms and labels, saving them as NumPy arrays.
+
+Functions:
+    - get_spectrograms(): Converts audio waveform to normalized mel-spectrogram.
+    - get_data(): Loads audio file and extracts spectrogram and labels.
+    - get_all_data(): Processes all audio files in a folder and saves spectrograms and labels.
+    - clip_quality_labels(): Filters quality labels to specific attributes and saves the filtered data.
+"""
+
 import os
 import json
 import librosa

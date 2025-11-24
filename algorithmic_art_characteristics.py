@@ -1,14 +1,16 @@
+"""
+Fine-grained texture generation functions to create visual patterns based on music features.
+
+Functions:
+    - blob_texture(): Generates a blobby/splatter texture pattern.
+    - wavy_texture(): Generates a wavy line texture pattern.
+    - scratchy_texture(): Generates a scratchy line texture pattern.
+"""
+
 import numpy as np
-import matplotlib.pyplot as plt
 import cv2
 import noise
 from scipy.ndimage import gaussian_filter, rotate
-
-def show(img, title=None):
-    plt.imshow(img, cmap='gray', vmin=0, vmax=1)
-    if title: plt.title(title)
-    plt.axis('off')
-    plt.show()
 
 # blob=7 for blobs or blob=2-3 for splatter
 def blob_texture(h=512, w=512, n_main=5, n_scattered=30, scattered_radius=(0.5, 2), main_radius=(20, 70),

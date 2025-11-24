@@ -1,4 +1,10 @@
-# downloads youtube clips according to a start and end timestamp
+"""
+Download YouTube clips based on specified start and end timestamps and save them as audio files.
+
+Functions:
+- download_clips(): Downloads all specified clips.
+- download_video_clip(): Downloads a specific clip from a YouTube video.
+"""
 
 import yt_dlp
 

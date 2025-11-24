@@ -1,3 +1,14 @@
+"""
+All formal classes for datasets, models, and high-level data structures.
+
+Classes:
+- InstrumentData: Dataset class for instrument classification.
+- QualityData: Dataset class for quality classification.
+- InstrumentClassifier: CNN model for instrument classification.
+- QualityClassifier: CNN model for quality classification.
+- MusicFeatures: Data structure to hold extracted music features.
+"""
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -131,3 +142,13 @@ class QualityClassifier(nn.Module):
         x = self.features(x)
         x = self.classifier(x)
         return x
+
+class MusicFeatures():
+    def __init__(self, notes, velocity, centroid, tempo, quality, instrument_sources, instrument_families):
+        self.notes = notes
+        self.velocity = velocity
+        self.centroid = centroid
+        self.tempo = tempo
+        self.quality = quality
+        self.instrument_sources = instrument_sources
+        self.instrument_families = instrument_families

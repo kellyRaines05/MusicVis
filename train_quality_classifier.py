@@ -1,3 +1,12 @@
+"""
+Train and evaluate a quality classification model using spectrogram data.
+
+Functions:
+- evaluate_model(): Evaluates the model on the provided dataloader
+- train_quality_classifier(): Trains the quality classification model.
+- test_model(): Tests the trained model and displays confusion matrices.
+"""
+
 import torch
 import numpy as np
 import torch.nn as nn
@@ -101,4 +110,4 @@ def test_model(model_path, batch_size=64):
     print(f"Model Accuracy on test set: {score}")
     
 # train_quality_classifier()
-test_model("C:/Users/18155/Programming/MusicVis/models/quality_classification.pth")
+# test_model("C:/Users/18155/Programming/MusicVis/models/quality_classification.pth")
