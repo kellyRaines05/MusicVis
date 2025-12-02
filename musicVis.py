@@ -15,17 +15,20 @@ from stem_music import *
 
 def map_features(input_music: str):
     features = get_features(input_music, time_chunk=4)
+    for f in features:
+        print("VARIATION CENTROID:", np.std(f.velocity)/np.mean(f.velocity))
 
+def get_color_mapping(centroid_feature):
+    pass
 
 def musicVis(input_music: str):
-    stemmed_file = stem_song(input_music)
-    is_silent = detect_silence(stemmed_file)
-    if is_silent:
-        print("The input audio is silent. Exiting visualization.")
-        return
+    pass
+    # stemmed_file = stem_song(input_music)
+    # is_silent = detect_silence(stemmed_file)
+    # if is_silent:
+    #     print("The input audio is silent. Exiting visualization.")
+    #     return
     
-
-
 def transition_frames(img1, img2, steps=30):
     img1_f = img1.astype(np.float32)
     img2_f = img2.astype(np.float32)
@@ -45,3 +48,5 @@ def show_transition(frames, delay=0.03):
         plt.axis('off')
         display(plt.gcf())
         time.sleep(delay)
+
+map_features(input_music="separated/htdemucs_6s/s001/bass.wav")

@@ -144,7 +144,8 @@ class QualityClassifier(nn.Module):
         return x
 
 class MusicFeatures():
-    def __init__(self, notes, velocity, centroid, tempo, quality, instrument_sources, instrument_families):
+    def __init__(self, time, notes, velocity, centroid, tempo, quality, instrument_sources, instrument_families):
+        self.time = time
         self.notes = notes
         self.velocity = velocity
         self.centroid = centroid
