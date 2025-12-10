@@ -87,7 +87,7 @@ def get_features(file, time_chunk=4):
     frame_length = 2048
     hop_length = 512
     block_length = int((sr * time_chunk) / hop_length)
-    stream = librosa.stream(file, block_length=block_length, frame_length=frame_length, hop_length=hop_length, mono=True, dtype=np.float32)
+    stream = librosa.stream(file, block_length=block_length, frame_length=frame_length, hop_length=hop_length, mono=True, dtype=np.float32, fill_value=0)
 
     with ThreadPoolExecutor(max_workers=15) as executor:
         for n, y in enumerate(stream):

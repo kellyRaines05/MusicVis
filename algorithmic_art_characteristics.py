@@ -213,7 +213,6 @@ def color_art_pixel(texture, colors):
 
     colors = np.array(colors, dtype=np.uint8)
     segment_length = 256 // (num_colors - 1)
-    remainder = 256 % (num_colors - 1)
 
     points = [i * segment_length for i in range(num_colors - 1)]
     points.append(256)
@@ -223,8 +222,6 @@ def color_art_pixel(texture, colors):
     for i in range(len(points) - 1):
         start = points[i]
         end = points[i + 1]
-        if i == len(points) - 2:
-            end += remainder
         LUT[start:end] = np.linspace(colors[i], colors[i + 1], num=end - start, dtype=np.uint8)
 
     texture = (texture * 255.0).astype(np.uint8)

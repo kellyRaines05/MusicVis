@@ -7,8 +7,9 @@ Functions:
 """
 
 import shlex
-import librosa
 # import os
+import numpy as np
+from pydub import AudioSegment, silence
 import demucs.separate
 
 model = "htdemucs_6s"
@@ -18,17 +19,19 @@ def stem_song(file):
     output = file.split("/")
     return f"separated/{model}/{output[len(output) - 1]}"
 
-def detect_silence(audio, sr, top_db=25, min_silence_len=1.0):
-    min_silence_samples = int(min_silence_len * sr)
-    non_silent_intervals = librosa.effects.split(audio, top_db=top_db, frame_length=2048, hop_length=512)
-    if len(non_silent_intervals) == 0:
-        return True
+def detect_silence(y, sr):
+    audio = AudioSegment(
+        (y * 32767).astype(np.int16).tobytes(),
+        frame_rate=sr,
+        sample_width=2,
+        channels=1
+    )
+    silence_times = silence.detect_silence(audio, min_silence_len=1000, silence_thresh=-35)
 
-    total_non_silent_duration = sum(end - start for start, end in non_silent_intervals)
-    if total_non_silent_duration < min_silence_samples:
+    if len(silence_times) == 1 and silence_times[0][1] == len(audio):
         return True
-
-    return False
+    else:
+        return False
 
 # music_clips_dir = "C:/Users/18155/Programming/MusicVis/all_data/music_clips/"
 # for file_name in os.listdir(music_clips_dir):
