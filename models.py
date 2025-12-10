@@ -144,12 +144,39 @@ class QualityClassifier(nn.Module):
         return x
 
 class MusicFeatures():
-    def __init__(self, time, notes, velocity, centroid, tempo, quality, instrument_sources, instrument_families):
+    def __init__(self, time, notes, velocity, loudness, centroid, flatness, tempo, quality, instrument_sources):
         self.time = time
         self.notes = notes
         self.velocity = velocity
+        self.loudness = loudness
         self.centroid = centroid
+        self.flatness = flatness
         self.tempo = tempo
         self.quality = quality
         self.instrument_sources = instrument_sources
-        self.instrument_families = instrument_families
+    
+    def to_dict(self):
+        return {
+            "time": self.time,
+            "notes": self.notes.tolist(),
+            "velocity": self.velocity.tolist(),
+            "loudness": self.loudness.tolist(),
+            "centroid": self.centroid.tolist(),
+            "flatness": self.flatness.tolist(),
+            "tempo": self.tempo,
+            "quality": self.quality.tolist(),
+            "instrument_sources": self.instrument_sources
+        }
+    @staticmethod
+    def from_dict(d):
+        return MusicFeatures(
+            time=d["time"],
+            notes=np.array(d["notes"]),
+            velocity=np.array(d["velocity"]),
+            loudness=np.array(d["loudness"]),
+            centroid=np.array(d["centroid"]),
+            flatness=np.array(d["flatness"]),
+            tempo=d["tempo"],
+            quality=np.array(d["quality"]),
+            instrument_sources=d["instrument_sources"]
+        )

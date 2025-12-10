@@ -5,14 +5,17 @@ Functions:
     - blob_texture(): Generates a blobby/splatter texture pattern.
     - wavy_texture(): Generates a wavy line texture pattern.
     - scratchy_texture(): Generates a scratchy line texture pattern.
+    - get_color(): Determines color based on music features.
+    - color_art_pixel(): Colors a grayscale texture based on provided colors.
 """
 
 import numpy as np
 import cv2
 import noise
-from scipy.ndimage import gaussian_filter, rotate
-from scipy.interpolate import interp1d
 import random
+from colorsys import hsv_to_rgb
+from scipy.ndimage import gaussian_filter, rotate
+from models import MusicFeatures
 
 # blob=7 for blobs or blob=2 for splatter
 def blob_texture(h=512, w=512, n_main=5, blobiness=2):
@@ -36,7 +39,8 @@ def blob_texture(h=512, w=512, n_main=5, blobiness=2):
     radii = []
     while len(centers) < n_main:
         new_center = np.random.uniform([0, 0], [w, h])
-        if not centers or np.all(np.linalg.norm(np.array(centers) - new_center, axis=1) >= 180):
+        min_distance = min(h, w) / max(5, n_main) 
+        if not centers or np.all(np.linalg.norm(np.array(centers) - new_center, axis=1) >= min_distance):
             centers.append(new_center)
             radii.append(np.random.uniform(20, 70))
 
@@ -125,70 +129,104 @@ def scratchy_texture(h=512, w=512, n_lines=100, separation=0, line_length=(10,10
     img = (img - img.min()) / (img.max() - img.min()) if img.max() > img.min() else img
     return img
 
-def get_color_range(weights=None):
-    ranges = [
-        (0, 60),
-        (60, 120),
-        (120, 180),
-        (180, 240),
-        (240, 300),
-        (300, 360)
-    ]
+def get_color(features: MusicFeatures, centroid_threshold=3000, flatness_threshold=0.25):
+    notes=features.notes
+    loudness=features.loudness
+    centroid=features.centroid
+    flatness=features.flatness
+    source=features.instrument_sources
+    bright=features.quality[0][0]
+    dark=features.quality[0][1]
+
+    # higher value for higher pitch
+    mean_pitch = np.mean(notes)
+    value = np.clip(mean_pitch / 90, 0, 1)
     
-    chosen_item = random.choices(ranges, weights=weights, k=1)[0]
-    return chosen_item
+    # higher saturation for louder sounds
+    min_loudness = -35
+    max_loudness = -5
+    mean_loudness = np.mean(loudness)
+    saturation = (mean_loudness - min_loudness) / (max_loudness - min_loudness)
+    if bright:
+        saturation += 0.8
+    elif dark:
+        saturation -= 0.5
+    saturation = np.clip(saturation, 0, 1)
+
+    # warm colors for low centroid, cool colors for high centroid
+    if np.mean(centroid) > centroid_threshold:
+        # smooth sounds - green to blue
+        if np.max(flatness) < flatness_threshold:
+            if source == 0:
+                hue = random.uniform(201, 240)
+            elif source == 1 or source == 2:
+                hue = random.uniform(110, 169)
+        # harsh sounds - cyan, purple, magenta
+        else:
+            # acoustic - magenta
+            if source == 0:
+                hue = random.uniform(321, 330)
+            # electronic - purple
+            elif source == 1:
+                hue = random.uniform(241, 320)
+            # synthetic - cyan
+            else:
+                hue = random.choice([random.uniform(170, 200)])
+    else:
+        # smooth sounds - pink, orange-brown/yellow
+        if np.max(flatness) < flatness_threshold:
+            # acoustic - orange-brown
+            if source == 0:
+                hue = random.uniform(21, 40)
+            # electronic - pink
+            elif source == 1:
+                hue = random.uniform(331, 354)
+            # synthetic - yellow
+            else:
+                hue = random.uniform(41, 50)
+        # harsh sounds - yellow to yellow-green, red to red-orange
+        else:
+            # acoustic - red-orange
+            if source == 0:
+                hue = random.uniform(0, 20)
+            # electronic - yellow/yellow-green
+            elif source == 1:
+                hue = random.uniform(51, 109)
+            # synthetic - red
+            else:
+                hue = random.uniform(355, 360)
+    color = hsv_to_rgb(h=(hue/360.0), s=saturation, v=value)
+    return np.array([int(c * 255) for c in color])
 
 
-def generate_hsv(h=512, w=512, centroid=None, texture=None, saturation=None, warp_scale=360.0):
-    hsv = np.zeros((h, w, 3), dtype=np.float32)
-    
-    c = (centroid - centroid.min()) / (centroid.max() - centroid.min())
-    c = c.flatten()
-    
-    x_original = np.linspace(0, 1, c.shape[0])
-    x_target   = np.linspace(0, 1, w)
-    
-    interp = interp1d(x_original, c, kind='cubic')
-    centroid_curve = interp(x_target)
-    mean_c = centroid_curve.mean()
-    warp = (centroid_curve - mean_c) * warp_scale
-    base_hue = np.tile(np.linspace(0, 1, h)[:, None], (1, w))
-    
-    warped_hue = np.zeros_like(base_hue)
-    
-    for x in range(w):
-        shift = int(warp[x])
-        warped_hue[:, x] = np.roll(base_hue[:, x], shift)
+def color_art_pixel(texture, colors):
+    num_colors = len(colors)
 
-    hue_min, hue_max = get_color_range()
-    hsv[:, :, 0] = hue_min + warped_hue * (hue_max - hue_min)
-    hsv[:,:,1] = saturation
-    hsv[:,:,2] = texture
-    return hsv
+    if num_colors == 1:
+        color = np.array(colors[0], dtype=np.uint8)
+        # add black or white to blend colors
+        if np.linalg.norm(color) < 128:
+            colors = [colors[0], [255, 255, 255]]
+        else:
+            colors = [colors[0], [0,0,0]]
+        num_colors = 2
 
+    colors = np.array(colors, dtype=np.uint8)
+    segment_length = 256 // (num_colors - 1)
+    remainder = 256 % (num_colors - 1)
 
-def color_art_pixel(texture, background, texture_hsv, target_brightness=None):
-    mask = (texture >= 0.1).astype(np.float32)
+    points = [i * segment_length for i in range(num_colors - 1)]
+    points.append(256)
 
-    H_out = background[:,:,0] * (1-mask) + texture_hsv[:,:,0] * mask
-    S_out = background[:,:,1] * (1-mask) + texture_hsv[:,:,1] * mask
-    V_bg = background[:,:,2]
-    V_tex = texture_hsv[:,:,2]
-    V_out = V_bg*(1-mask) + V_tex*mask
-    V_out = np.maximum(V_out, 0.25)
+    LUT = np.zeros((256, 3), dtype=np.uint8)
 
-    if target_brightness is None:
-        target_brightness = V_out.mean()
+    for i in range(len(points) - 1):
+        start = points[i]
+        end = points[i + 1]
+        if i == len(points) - 2:
+            end += remainder
+        LUT[start:end] = np.linspace(colors[i], colors[i + 1], num=end - start, dtype=np.uint8)
 
-    current_mean = V_out.mean()
-    if current_mean > 0:
-        V_out *= (target_brightness / current_mean)
-
-    V_out = np.clip(V_out, 0, 1)
-
-    hsv = np.stack([H_out, S_out, V_out], axis=-1)
-    hsv[:,:,0] = hsv[:,:,0] / 360 * 179
-    hsv[:,:,1:] *= 255
-    hsv = hsv.astype(np.uint8)
-    rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-    return rgb
+    texture = (texture * 255.0).astype(np.uint8)
+    colored_array = LUT[texture]
+    return colored_array

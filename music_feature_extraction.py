@@ -18,9 +18,11 @@ import crepe
 import numpy as np
 import librosa
 import torch
-from models import *
+import pyloudnorm as pyln
 from preprocess_data import get_spectrograms
 from concurrent.futures import ThreadPoolExecutor
+from models import *
+from stem_music import detect_silence
 
 def detect_pitch(audio, sr):
     _, frequency, _, _ = crepe.predict(audio, sr, model_capacity="small", step_size=150, viterbi=True)
@@ -30,12 +32,21 @@ def detect_pitch(audio, sr):
     return notes
 
 def detect_velocity(audio, sr):
-    onset_env = librosa.onset.onset_strength(y=audio, sr=sr)
-    return onset_env
+    return librosa.onset.onset_strength(y=audio, sr=sr)
+
+def detect_loudness(audio, sr):
+    if audio.ndim > 1:
+        audio = np.mean(audio, axis=1)
+    meter = pyln.Meter(sr)
+    return meter.integrated_loudness(audio)
 
 def detect_centroid(audio, sr):
     cent = librosa.feature.spectral_centroid(y=audio, sr=sr)
     return cent
+
+def detect_flatness(audio, sr):
+    flatness = librosa.feature.spectral_flatness(y=audio)
+    return flatness
 
 def estimate_tempo(audio, sr):
     onset_env = librosa.onset.onset_strength(y=audio, sr=sr)
@@ -80,23 +91,32 @@ def get_features(file, time_chunk=4):
 
     with ThreadPoolExecutor(max_workers=15) as executor:
         for n, y in enumerate(stream):
-            block_time = librosa.blocks_to_time(n, block_length=block_length, hop_length=hop_length, sr=sr)
-            notes = executor.submit(detect_pitch, y, sr)
-            velocity = executor.submit(detect_velocity, y, sr)
-            centroid = executor.submit(detect_centroid, y, sr)
-            tempo = executor.submit(estimate_tempo, y, sr)
-            quality = executor.submit(detect_quality, y, sr)
-            instrument = executor.submit(detect_instrument, y, sr)
-            instrument_sources = instrument.result()[0]
+            silent = executor.submit(detect_silence, y, sr)
+            if silent.result():
+                yield None
+                continue
+            else:
+                block_time = librosa.blocks_to_time(n, block_length=block_length, hop_length=hop_length, sr=sr)
+                notes = executor.submit(detect_pitch, y, sr)
+                velocity = executor.submit(detect_velocity, y, sr)
+                loudness = executor.submit(detect_loudness, y, sr)
+                centroid = executor.submit(detect_centroid, y, sr)
+                flatness = executor.submit(detect_flatness, y, sr)
+                tempo = executor.submit(estimate_tempo, y, sr)
+                quality = executor.submit(detect_quality, y, sr)
+                instrument = executor.submit(detect_instrument, y, sr)
+                instrument_sources = instrument.result()[0].item()
 
-            chunk_features = MusicFeatures(
-                time=block_time,
-                notes=notes.result(),
-                velocity=velocity.result(),
-                centroid=centroid.result(),
-                tempo=tempo.result(),
-                quality=quality.result(),
-                instrument_sources=instrument_sources
-            )
-            
-            yield chunk_features
+                chunk_features = MusicFeatures(
+                    time=block_time,
+                    notes=notes.result(),
+                    velocity=velocity.result(),
+                    loudness=loudness.result(),
+                    centroid=centroid.result(),
+                    flatness=flatness.result(),
+                    tempo=tempo.result(),
+                    quality=quality.result(),
+                    instrument_sources=instrument_sources
+                )
+                
+                yield chunk_features

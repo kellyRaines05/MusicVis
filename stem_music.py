@@ -6,9 +6,10 @@ Functions:
 - detect_silence(file): Detects if the entire audio file is silent.
 """
 
-import demucs.separate
 import shlex
-from pydub import AudioSegment, silence
+import librosa
+# import os
+import demucs.separate
 
 model = "htdemucs_6s"
 
@@ -17,11 +18,20 @@ def stem_song(file):
     output = file.split("/")
     return f"separated/{model}/{output[len(output) - 1]}"
 
-def detect_silence(file):
-    myaudio = AudioSegment.from_wav(file)
-    silence_times = silence.detect_silence(myaudio, min_silence_len=1000, silence_thresh=-25)
-
-    if len(silence_times) == 1 and silence_times[0][1] == len(myaudio):
+def detect_silence(audio, sr, top_db=25, min_silence_len=1.0):
+    min_silence_samples = int(min_silence_len * sr)
+    non_silent_intervals = librosa.effects.split(audio, top_db=top_db, frame_length=2048, hop_length=512)
+    if len(non_silent_intervals) == 0:
         return True
-    else:
-        return False
+
+    total_non_silent_duration = sum(end - start for start, end in non_silent_intervals)
+    if total_non_silent_duration < min_silence_samples:
+        return True
+
+    return False
+
+# music_clips_dir = "C:/Users/18155/Programming/MusicVis/all_data/music_clips/"
+# for file_name in os.listdir(music_clips_dir):
+#     if file_name.endswith(".wav"):
+#         file_path = os.path.join(music_clips_dir, file_name)
+#         stem_song(file_path)
