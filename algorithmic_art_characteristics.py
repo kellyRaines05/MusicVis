@@ -11,61 +11,87 @@ Functions:
 
 import numpy as np
 import cv2
-import noise
 import random
 from colorsys import hsv_to_rgb
 from scipy.ndimage import gaussian_filter, rotate
 from models import MusicFeatures
 
 # blob=7 for blobs or blob=2 for splatter
-def blob_texture(h=512, w=512, n_main=5, blobiness=2):
+def normalize(field: np.ndarray) -> np.ndarray:
+    max_abs = np.max(np.abs(field))
+    return field / max_abs if max_abs > 0 else field
+
+def blobby_sdf_local(sdf: np.ndarray, X: np.ndarray, Y: np.ndarray,
+                     cx: float, cy: float, r: float, noise: np.ndarray, 
+                     blobiness: float, pad: float = 2.5):
+    h, w = sdf.shape
+    radius = int(r * pad)
+
+    xmin = max(0, int(cx - radius))
+    xmax = min(w, int(cx + radius))
+    ymin = max(0, int(cy - radius))
+    ymax = min(h, int(cy + radius))
+
+    if xmin >= xmax or ymin >= ymax:
+        return
+
+    Xl = X[ymin:ymax, xmin:xmax]
+    Yl = Y[ymin:ymax, xmin:xmax]
+    noise_l = noise[ymin:ymax, xmin:xmax]
+
+    dist = np.sqrt((Xl - cx) ** 2 + (Yl - cy) ** 2) - r
+    dist += noise_l * r * blobiness * 0.5
+
+    sdf[ymin:ymax, xmin:xmax] = np.minimum(
+        sdf[ymin:ymax, xmin:xmax], dist
+    )
+
+def blob_texture(h: int=512, w: int=512, n_main: int = 5, blobiness: float = 2.0) -> np.ndarray:
     Y, X = np.mgrid[0:h, 0:w]
     sdf = np.full((h, w), np.inf, dtype=np.float32)
-    
-    shape = (h // 48, w // 48)
-    scale_x, scale_y = shape
-    perlin_noise = np.array([[noise.pnoise2(i/scale_y, j/scale_x, octaves=6, persistence=0.5, lacunarity=2.0) 
-                              for j in range(w)] for i in range(h)], dtype=np.float32)
-    perlin_noise = (perlin_noise - perlin_noise.min()) / (perlin_noise.max() - perlin_noise.min())
-    perlin_noise = (perlin_noise * 2) - 1
 
-    def blobby_sdf(cx, cy, r, noise_field):
-        dist = np.sqrt((X - cx) ** 2 + (Y - cy) ** 2) - r
-        noise_field_normalized = noise_field / (np.max(np.abs(noise_field)) if np.max(np.abs(noise_field)) != 0 else 1.0)
-        dist += noise_field_normalized * r * blobiness * 0.5
-        return dist
-    
+    noise_large = normalize(
+        gaussian_filter(np.random.randn(h, w).astype(np.float32), sigma=6)
+    )
+
+    noise_small = normalize(
+        gaussian_filter(np.random.randn(h, w).astype(np.float32), sigma=2)
+    )
+
     centers = []
     radii = []
+
+    min_distance = min(h, w) / max(5, n_main)
+
     while len(centers) < n_main:
-        new_center = np.random.uniform([0, 0], [w, h])
-        min_distance = min(h, w) / max(5, n_main) 
-        if not centers or np.all(np.linalg.norm(np.array(centers) - new_center, axis=1) >= min_distance):
-            centers.append(new_center)
+        c = np.random.uniform([0, 0], [w, h])
+        if not centers:
+            ok = True
+        else:
+            d = np.linalg.norm(np.array(centers) - c, axis=1)
+            ok = np.all(d >= min_distance)
+
+        if ok:
+            centers.append(c)
             radii.append(np.random.uniform(20, 70))
 
-    base_noise_field = gaussian_filter(np.random.randn(h, w).astype(np.float32), sigma=2)
-    base_noise_field /= np.max(np.abs(base_noise_field)) if np.max(np.abs(base_noise_field)) != 0 else 1.0
-
     for (cx, cy), r in zip(centers, radii):
-        blob_noise = gaussian_filter(np.random.randn(h, w).astype(np.float32), sigma=r * blobiness * 0.05)
-        blob_noise /= np.max(np.abs(blob_noise)) if np.max(np.abs(blob_noise)) != 0 else 1.0
-        sdf = np.minimum(sdf, blobby_sdf(cx, cy, r, blob_noise))
+        blobby_sdf_local(sdf, X, Y, cx, cy, r, noise_large, blobiness)
 
     for _ in range(n_main * 5):
-        mx, my = np.random.uniform(0, w), np.random.uniform(0, h)
-        mr = np.random.uniform(0.5, 2)
-        blob_noise = gaussian_filter(np.random.randn(h, w).astype(np.float32), sigma=mr * blobiness * 0.05)
-        blob_noise /= np.max(np.abs(blob_noise)) if np.max(np.abs(blob_noise)) != 0 else 1.0
-        sdf = np.minimum(sdf, blobby_sdf(mx, my, mr, blob_noise))
+        cx, cy = np.random.uniform(0, w), np.random.uniform(0, h)
+        r = np.random.uniform(0.5, 2.0)
 
-    sdf += base_noise_field * 1.5
+        blobby_sdf_local(sdf, X, Y, cx, cy, r, noise_small, blobiness, pad=3.0)
+
+    base_noise = normalize(gaussian_filter(np.random.randn(h, w).astype(np.float32), sigma=2))
+    sdf += base_noise * 1.5
 
     blur_sigma = np.random.uniform(0.5, 1.5)
-    img = np.clip((-sdf / (blur_sigma * 10)) + 0.5, 0, 1)
+    img = np.clip((-sdf / (blur_sigma * 10.0)) + 0.5, 0.0, 1.0)
     img = gaussian_filter(img, sigma=blur_sigma)
-    return img
 
+    return img
 
 # freq=0.25 for wide waves, freq=1.0 for tight waves, layers=5 for complexity
 def wavy_texture(h=512, w=512, freq=0.25, layers=1):
@@ -129,7 +155,7 @@ def scratchy_texture(h=512, w=512, n_lines=100, separation=0, line_length=(10,10
     img = (img - img.min()) / (img.max() - img.min()) if img.max() > img.min() else img
     return img
 
-def get_color(features: MusicFeatures, centroid_threshold=3000, flatness_threshold=0.25):
+def get_color(features: MusicFeatures, centroid_threshold=3000, flatness_threshold=0.1):
     notes=features.notes
     loudness=features.loudness
     centroid=features.centroid
@@ -203,13 +229,12 @@ def color_art_pixel(texture, colors):
     num_colors = len(colors)
 
     if num_colors == 1:
-        color = np.array(colors[0], dtype=np.uint8)
-        # add black or white to blend colors
-        if np.linalg.norm(color) < 128:
-            colors = [colors[0], [255, 255, 255]]
-        else:
-            colors = [colors[0], [0,0,0]]
+        luminance = 0.2126 * colors[0][0] + 0.7152 * colors[0][1] + 0.0722 * colors[0][2]
+        delta = 40 if luminance < 128 else -40
+        close_color = np.clip(colors[0] + delta, 0, 255)
+        colors = np.array([colors[0], close_color])
         num_colors = 2
+
 
     colors = np.array(colors, dtype=np.uint8)
     segment_length = 256 // (num_colors - 1)

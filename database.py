@@ -84,6 +84,24 @@ def add_stems_to_db(engine):
                             session.add(feature)
                             session.commit()
 
+def update_song_location(file_dir: str, engine):
+    with Session(engine) as session:
+        for file_name in os.listdir(file_dir):
+            if not file_name.endswith(".wav"):
+                continue
+
+            song_path = os.path.join(file_dir, file_name)
+            title, _ = os.path.splitext(file_name)
+
+            song = session.scalar(
+                select(Song).where(Song.song_title == title)
+            )
+
+            if song is None:
+                continue
+            song.file_name = song_path
+        session.commit()
+
 def get_song_features(song_title: str, engine) -> list[list[MusicFeatures]]:
     with Session(engine) as session:
         song = session.scalar(
@@ -115,3 +133,13 @@ def get_song_features(song_title: str, engine) -> list[list[MusicFeatures]]:
             result.append([inner[k] for k in inner])
 
         return result, sorted(list(timeline))
+    
+def get_song_file_location(song_title: str, engine) -> str:
+    with Session(engine) as session:
+        song = session.scalar(
+            select(Song).where(Song.song_title == song_title)
+        )
+        if song is None:
+            return None
+        else:
+            return song.file_name
