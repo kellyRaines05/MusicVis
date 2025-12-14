@@ -170,7 +170,7 @@ def get_color(features: MusicFeatures, centroid_threshold=3000, flatness_thresho
     
     # higher saturation for louder sounds
     min_loudness = -35
-    max_loudness = -5
+    max_loudness = -10
     mean_loudness = np.mean(loudness)
     saturation = (mean_loudness - min_loudness) / (max_loudness - min_loudness)
     if bright:
@@ -234,7 +234,6 @@ def color_art_pixel(texture, colors):
         close_color = np.clip(colors[0] + delta, 0, 255)
         colors = np.array([colors[0], close_color])
         num_colors = 2
-
 
     colors = np.array(colors, dtype=np.uint8)
     segment_length = 256 // (num_colors - 1)

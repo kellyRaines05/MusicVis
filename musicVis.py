@@ -10,7 +10,7 @@ def numpy_to_surface(img: np.ndarray) -> pygame.Surface:
     img = np.transpose(img, (1, 0, 2))
     return pygame.surfarray.make_surface(img)
 
-def map_features(features: MusicFeatures, screen_size:tuple=(512, 512), velocity_threshold: float=1.5, flatness_threshold: float=4):
+def map_features(features: MusicFeatures, screen_size:tuple=(512, 512), flatness_threshold: float=4):
     map_source = {0: 1, 1: 3, 2: 5}
     mean_velocity = np.mean(features.velocity)
     spectral_centroid_deviation = np.std(features.centroid)/np.mean(features.centroid)
@@ -18,10 +18,10 @@ def map_features(features: MusicFeatures, screen_size:tuple=(512, 512), velocity
 
     combined_texture = None
     
-    # high velocity mean OR harsh (noisy sounds)
-    if (mean_velocity > velocity_threshold) or (flatness_deviation > flatness_threshold):
+    # harsh (noisy sounds)
+    if flatness_deviation > flatness_threshold:
         img = scratchy_texture(w=screen_size[0], h=screen_size[1], n_lines=round(features.tempo), 
-                                separation=spectral_centroid_deviation, line_length=(80/len(features.notes), 800/len(features.notes)))
+                                separation=spectral_centroid_deviation, line_length=(50/len(features.notes), 500/len(features.notes)))
         combined_texture = img
     # reverb
     if features.quality[0][3] == 1:
@@ -32,7 +32,7 @@ def map_features(features: MusicFeatures, screen_size:tuple=(512, 512), velocity
     # blobs/splatters
     if combined_texture is None or features.instrument_sources != 0:
         img = blob_texture(w=screen_size[0], h=screen_size[1],
-                           n_main=len(features.notes), blobiness=spectral_centroid_deviation)
+                           n_main=len(features.notes), blobiness=mean_velocity)
         combined_texture = img if combined_texture is None else np.clip(combined_texture + img, 0, 1)
     color = None
     if combined_texture is not None:
