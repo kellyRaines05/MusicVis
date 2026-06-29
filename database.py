@@ -133,6 +133,14 @@ def get_song_features(song_title: str, engine) -> list[list[MusicFeatures]]:
             result.append([inner[k] for k in inner])
 
         return result, sorted(list(timeline))
+
+def get_all_songs(engine) -> list[str]:
+    with Session(engine) as session:
+        all_songs = session.scalars(
+            select(Song.song_title).where(Song.song_title is not None)
+        ).all()
+
+    return all_songs
     
 def get_song_file_location(song_title: str, engine) -> str:
     with Session(engine) as session:
@@ -143,3 +151,16 @@ def get_song_file_location(song_title: str, engine) -> str:
             return None
         else:
             return song.file_name
+
+# from sqlalchemy import create_engine
+# engine = create_engine("sqlite:///musicVis_featrures.sqlite")
+# add_stems_to_db(engine=engine)
+
+# name = "meadow_flowery"
+# with Session(engine) as session:
+#     song = session.scalar(
+#         select(Song).where(Song.song_title == name)
+#     )
+#     song.file_name = f"C:/Users/18155/Programming/MusicVis/all_data/music_clips/nature_sounds/{name}.mp3"
+#     print(song.file_name)
+#     session.commit()

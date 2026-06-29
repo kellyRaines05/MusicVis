@@ -130,5 +130,20 @@ def musicVis(song_title: str):
 
     pygame.quit()
 
+# visualization function for frontend (equivalent to musicVis)
+def generate_visualization(segments, time_ms, current_index):
+    while current_index < len(segments) - 1:
+        seg = segments[current_index + 1]
+
+        if seg["start"] <= time_ms:
+            current_index += 1
+        else:
+            break
+
+    segment = segments[current_index]
+
+    if segment["end"] is not None and time_ms >= segment["end"]:
+        return None, current_index
+
 if __name__ == "__main__":
     musicVis("s001")
