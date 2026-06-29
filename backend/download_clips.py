@@ -42,22 +42,28 @@ def download_clips():
         title = str(title).zfill(3)
         download_video_clip(link_real[0], start, end, title)
 
-def download_video_clip(video_url, start, end, title):
+def download_video_clip(video_url, title, start=None, end=None) -> str:
+    postprocessor_args = []
+    if start and end:
+        postprocessor_args.append("-ss")
+        postprocessor_args.append(str(start))
+        postprocessor_args.append("-to")
+        postprocessor_args.append(str(end))
+    
     ydl_opts = {
         "format": "bestaudio",
-        "outtmpl": f"s{title}.%(ext)s",
+        "outtmpl": f"downloaded_clips/{title}.%(ext)s",
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "wav",
         }],
-        "postprocessor_args": [
-            "-ss", str(start),
-            "-to", str(end)
-        ]
+        "postprocessor_args": postprocessor_args,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([video_url])
 
-if __name__ == "__main__":
-    download_clips()
+    return f"downloaded_clips/{title}.wav"
+
+# if __name__ == "__main__":
+#     download_clips()

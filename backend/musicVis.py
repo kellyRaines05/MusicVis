@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+
 from sqlalchemy import create_engine
 from database import get_song_features, get_song_file_location
 from music_feature_extraction import MusicFeatures
@@ -134,7 +135,6 @@ def musicVis(song_title: str):
 def generate_visualization(segments, time_ms, current_index):
     while current_index < len(segments) - 1:
         seg = segments[current_index + 1]
-
         if seg["start"] <= time_ms:
             current_index += 1
         else:
@@ -143,7 +143,25 @@ def generate_visualization(segments, time_ms, current_index):
     segment = segments[current_index]
 
     if segment["end"] is not None and time_ms >= segment["end"]:
-        return None, current_index
+        blank = np.zeros((768, 1024, 3), dtype=np.uint8)
+        _, buffer = cv2.imencode('.webp', blank)
+        return buffer.tobytes(), current_index
 
-if __name__ == "__main__":
-    musicVis("s001")
+    local_seconds = (time_ms - segment["start"]) / 1000.0
+    frame_idx = local_seconds * segment["tempo"] / 30.0
+
+    if len(segment["images"]) == 1:
+        composite = segment["images"][0]
+    else:
+        composite = animated_composite(frame_idx, segment["images"], len(segment["images"]))
+
+    colored = color_art_pixel(composite, segment["colors"])
+    
+    success, buffer = cv2.imencode('.webp', colored)
+    if not success:
+        raise Exception("Could not encode image to WebP")
+
+    return buffer.tobytes(), current_index
+
+# if __name__ == "__main__":
+#     musicVis("s001")

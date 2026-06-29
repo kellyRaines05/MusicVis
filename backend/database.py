@@ -14,7 +14,7 @@ Functions:
 
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 from sqlalchemy.dialects.sqlite import JSON
-from sqlalchemy import String, Float
+from sqlalchemy import String, Float, Engine
 from sqlalchemy import ForeignKey, select
 from typing import List
 import os
@@ -59,30 +59,27 @@ class Features(Base):
     def __repr__(self) -> str:
         return f"Feature(id={self.id!r}, timestamp={self.timestamp!r}, features_json={self.features_json!r})"
     
-def add_stems_to_db(engine):
+def add_stems_to_db(engine: Engine, song_title: str, song_file_path: str, stem_file_path: str):
     with Session(engine) as session:
-        stem_dir = "separated/htdemucs_6s/"
-        for directory in os.listdir(stem_dir):
-            song_stem_dir = os.path.join(stem_dir, directory)
-            song = Song(song_title=directory, file_name=song_stem_dir)
-            session.add(song)
-            session.commit()
-            song_id = song.id
+        song = Song(song_title=song_title, file_name=song_file_path)
+        session.add(song)
+        session.commit()
+        song_id = song.id
             
-            for file_path in os.listdir(song_stem_dir):
-                if file_path.endswith(".wav"):
-                    stem_path = os.path.join(song_stem_dir, file_path)
-                    stem = Stem(song_id=song_id, stem_type=file_path.split('.')[0], file_name=stem_path)
-                    session.add(stem)
-                    session.commit()
-                    stem_id = stem.id
-                    
-                    features = get_features(stem_path, time_chunk=4)
-                    for feature in features:
-                        if feature is not None:
-                            feature = Features(stem_id=stem_id, timestamp=feature.time, features_json=feature.to_dict())
-                            session.add(feature)
-                            session.commit()
+        for stems_path in os.listdir(stem_file_path):
+            if stems_path.endswith(".wav"):
+                stem_path = os.path.join(stem_file_path, stems_path)
+                stem = Stem(song_id=song_id, stem_type=stems_path.split('.')[0], file_name=stem_path)
+                session.add(stem)
+                session.commit()
+                stem_id = stem.id
+                
+                features = get_features(stem_path, time_chunk=4)
+                for feature in features:
+                    if feature is not None:
+                        feature = Features(stem_id=stem_id, timestamp=feature.time, features_json=feature.to_dict())
+                        session.add(feature)
+                        session.commit()
 
 def update_song_location(file_dir: str, engine):
     with Session(engine) as session:
