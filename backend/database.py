@@ -16,7 +16,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, rela
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy import String, Float, Engine
 from sqlalchemy import ForeignKey, select
-from typing import List
+from typing import List, Optional, Dict
 import os
 
 from algorithmic_art_characteristics import *
@@ -99,7 +99,7 @@ def update_song_location(file_dir: str, engine):
             song.file_name = song_path
         session.commit()
 
-def get_song_features(song_title: str, engine) -> list[list[MusicFeatures]]:
+def get_song_features(song_title: str, engine):
     with Session(engine) as session:
         song = session.scalar(
             select(Song).where(Song.song_title == song_title)
@@ -107,7 +107,7 @@ def get_song_features(song_title: str, engine) -> list[list[MusicFeatures]]:
         if song is None:
             return []
 
-        features_dict: dict[float, list[MusicFeatures | None]] = {}
+        features_dict: Dict[float, List[Optional[MusicFeatures]]] = {}
         timeline = set()
         for stem_index, stem in enumerate(song.stems):
             rows = session.execute(
@@ -131,7 +131,7 @@ def get_song_features(song_title: str, engine) -> list[list[MusicFeatures]]:
 
         return result, sorted(list(timeline))
 
-def get_all_songs(engine) -> list[str]:
+def get_all_songs(engine) -> List[str]:
     with Session(engine) as session:
         all_songs = session.scalars(
             select(Song.song_title).where(Song.song_title is not None)
@@ -150,7 +150,7 @@ def get_song_file_location(song_title: str, engine) -> str:
             return song.file_name
 
 # from sqlalchemy import create_engine
-# engine = create_engine("sqlite:///musicVis_featrures.sqlite")
+# engine = create_engine("sqlite:///musicVis_features.sqlite")
 # add_stems_to_db(engine=engine)
 
 # name = "meadow_flowery"

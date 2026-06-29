@@ -21,7 +21,7 @@ import torch
 import pyloudnorm as pyln
 from preprocess_data import get_spectrograms
 from concurrent.futures import ThreadPoolExecutor
-from models import *
+from models import InstrumentClassifier, QualityClassifier, MusicFeatures
 from stem_music import detect_silence
 
 def detect_pitch(audio, sr):
