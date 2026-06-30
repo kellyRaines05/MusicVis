@@ -14,7 +14,7 @@ Functions:
 - get_features(): Processes an audio file in chunks and extracts all features concurrently.
 """
 
-import crepe
+import torchcrepe
 import numpy as np
 import librosa
 import torch
@@ -25,7 +25,7 @@ from models import InstrumentClassifier, QualityClassifier, MusicFeatures
 from stem_music import detect_silence
 
 def detect_pitch(audio, sr):
-    _, frequency, _, _ = crepe.predict(audio, sr, model_capacity="small", step_size=150, viterbi=True)
+    _, frequency, _, _ = torchcrepe.predict(audio, sr, model_capacity="small", step_size=150, viterbi=True)
     midi = 69 + 12 * np.log2(frequency / 440.0)
     notes = np.rint(midi).astype(int)
     notes = np.unique(notes)
