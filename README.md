@@ -11,5 +11,22 @@ This repository implements the three-step pipeline: stemming, feature extraction
 ### Adding music
 In order to add music, the wav file should be stemmed. In ``stem_music.py``, call Demucs (default model: htdemucs_6s) to separate it into 6 stemmed files. Add these files to the SQlite database by calling add_stems_to_db(). Be sure to modify the folder location to match the stemmed file! It should automatically extract the related features necessary for mapping to visuals.
 
+## How to use Vue App
+1. Create environment from yml file
+    ```
+    conda env create -f environment.yml
+    conda activate musicVis
+    ```
+2. Boot up backend
+    ```
+    cd backend
+    fastapi dev
+    ```
+3. Boot up frontend on a separate terminal
+    ```
+    cd frontend
+    npm run dev
+    ```
+
 ## MusicVis Example Visualizations (seizure warning)
 [MusicVis](https://github.com/user-attachments/assets/24622145-2f2c-4083-ab1f-5d44ecb7f686)

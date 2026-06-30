@@ -2,6 +2,7 @@ import uuid
 import threading
 from pathlib import Path
 
+from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -11,6 +12,10 @@ from musicVis import _build_muxed_video
 from database import add_stems_to_db, get_all_songs, get_song_file_location
 from download_clips import download_video_clip
 from stem_music import stem_song
+
+class AddSongRequest(BaseModel):
+    song_link: str
+    song_title: str
 
 app = FastAPI()
 
@@ -33,41 +38,27 @@ jobs = {}
 VIDEO_OUTPUT_DIR = Path(__file__).resolve().parent / "generated_videos"
 VIDEO_OUTPUT_DIR.mkdir(exist_ok=True)
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+def _run_song_job(job_id: str, song_link: str, song_title: str):
+    jobs[job_id].update({
+        "status": "Downloading clip",
+        "progress": 10,
+    })
 
-@app.get("/songs")
-def get_songs():
-    songs =  get_all_songs(engine=engine)
-    for i, song in enumerate(songs):
-        song_title = song.get('song_title') if isinstance(song, dict) else song
-        print(f"[{i}/{len(songs)}] Generating video for '{song_title}'...")
-        
-        try:
-            video_path = _build_muxed_video(song_title=song_title, VIDEO_OUTPUT_DIR=VIDEO_OUTPUT_DIR)
-            print(f"  ✓ Success: {video_path}")
-        except Exception as e:
-            print(f"  ✗ Error: {str(e)}")
+    try:
+        file_path = download_video_clip(video_url=song_link, title=song_title)
 
-    return songs
-
-@app.post("/songs/add_song")
-def add_song(song_link: str, song_title: str):
-    job_id = str(uuid.uuid4())
-    jobs[job_id] = "Starting"
-
-    def worker():
-        jobs[job_id] = "Downloading"
-        file_path = download_video_clip(
-            video_url=song_link,
-            title=song_title,
-        )
-
-        jobs[job_id] = "Separating stems"
+        jobs[job_id].update({
+            "status": "Stemming audio",
+            "progress": 35,
+            "message": "Separating the audio into stems",
+        })
         stem_path = stem_song(file=file_path)
 
-        jobs[job_id] = "Saving to database"
+        jobs[job_id].update({
+            "status": "Saving song data",
+            "progress": 60,
+            "message": "Persisting stems and feature data",
+        })
         add_stems_to_db(
             engine=engine,
             song_title=song_title,
@@ -75,15 +66,66 @@ def add_song(song_link: str, song_title: str):
             stem_file_path=stem_path,
         )
 
-        jobs[job_id] = "Done"
+        jobs[job_id].update({
+            "status": "Done",
+            "progress": 100,
+            "message": "Song added successfully",
+            "song_title": song_title,
+        })
+    except Exception as exc:
+        jobs[job_id].update({
+            "status": f"Error: {exc}",
+            "progress": 0,
+            "message": str(exc),
+            "song_title": song_title,
+        })
 
-    threading.Thread(target=worker).start()
 
-    return {"job_id": job_id}
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+
+@app.get("/songs")
+def get_songs():
+    return get_all_songs(engine=engine)
+
+
+@app.post("/songs/add_song", status_code=202)
+def add_song(payload: AddSongRequest):
+    song_link = payload.song_link.strip()
+    song_title = payload.song_title.strip()
+
+    if not song_link or not song_title:
+        raise HTTPException(status_code=400, detail="Both song_link and song_title are required")
+
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "Queued",
+        "progress": 0,
+        "message": "Queued for processing",
+        "song_title": song_title,
+    }
+
+    thread = threading.Thread(target=_run_song_job, args=(job_id, song_link, song_title), daemon=True)
+    thread.start()
+
+    return {
+        "job_id": job_id,
+        "status": jobs[job_id]["status"],
+        "progress": jobs[job_id]["progress"],
+    }
+
 
 @app.get("/songs/status/{job_id}")
-def get_status(job_id: str):
-    return {"status": jobs.get(job_id, "Unknown job")}
+def get_song_job_status(job_id: str):
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    return job
+
 
 @app.get("/audio/{song_title}")
 def serve_audio(song_title: str):

@@ -35,6 +35,7 @@
           <q-card-section>
             <h5 class="text-primary text-center q-mt-none">Visualize a New Song</h5>
             <q-input
+              v-model="songName"
               class="q-mb-sm"
               label="Song Name"
               outlined
@@ -42,19 +43,28 @@
               :rules="[val => val && val.length > 0 || 'This field is required']"
             />
             <q-input
+              v-model="youtubeLink"
               class="q-mb-sm"
               label="YouTube Link"
               outlined
               dense
               :rules="[val => val && val.length > 0 || 'This field is required']"
             />
+            <p class="q-pl-sm text-grey-9">make sure to copy the link from Youtube from "Share" not the web address</p>
             <q-btn
               @click="addSongHandler"
-              label="Add Song"
+              :label="isAddingSong ? 'Adding...' : 'Add Song'"
+              :disable="isAddingSong"
               color="secondary"
               class="full-width"
             />
 
+            <div v-if="jobId" class="q-mt-md">
+              <div class="text-caption text-grey-7">Job ID: {{ jobId }}</div>
+              <q-linear-progress :value="jobProgress / 100" rounded color="secondary" class="q-mt-sm" />
+              <div class="text-caption q-mt-xs">{{ jobStatus }} ({{ jobProgress }}%)</div>
+              <div v-if="jobMessage" class="text-caption text-grey-7 q-mt-xs">{{ jobMessage }}</div>
+            </div>
           </q-card-section>
         </q-card>
       </div>
@@ -70,15 +80,23 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, onUnmounted } from 'vue'
+  import { ref, onMounted, onUnmounted } from 'vue'
   import { useQuasar } from 'quasar'
   import { fetchSongs } from '@/api/loadOptions.js'
+  import { addSong, getJobStatus } from '@/api/addSong.js'
   import { SONG_TITLE_MAPPING } from '@/constants.js'
   import VideoPlayer from '@/components/VideoPlayer.vue'
 
   const songs = ref([])
   const selectedSong = ref(null)
   const activeSong = ref(null)
+  const songName = ref('')
+  const youtubeLink = ref('')
+  const jobId = ref(null)
+  const jobStatus = ref('')
+  const jobProgress = ref(0)
+  const jobMessage = ref('')
+  const isAddingSong = ref(false)
 
   const $q = useQuasar()
   let interval;
@@ -106,63 +124,89 @@
   }
 
   const addSongHandler = async () => {
-    // try {
-    //   const response = await apiAddSong(
-    //     youtubeLink.value,
-    //     songName.value
-    //   );
+    if (!songName.value.trim() || !youtubeLink.value.trim()) {
+      $q.notify({
+        type: 'negative',
+        message: 'Please enter both a song name and YouTube link.',
+        position: 'top',
+      })
+      return
+    }
 
-    //   if (!response || !response.job_id) {
-    //     console.error("Failed to add song:", response);
+    isAddingSong.value = true
+    jobId.value = null
+    jobStatus.value = 'Queued'
+    jobProgress.value = 0
+    jobMessage.value = 'Starting the upload pipeline'
 
-    //     $q.notify({
-    //       type: "negative",
-    //       message: "Failed to add song.",
-    //       position: "top",
-    //     });
+    try {
+      const response = await addSong(youtubeLink.value.trim(), songName.value.trim())
 
-    //     return;
-    //   }
+      if (!response || !response.job_id) {
+        throw new Error('Missing job id from server response')
+      }
 
-    //   const jobId = response.job_id;
-    //   jobStatus.value = "Starting";
+      jobId.value = response.job_id
+      jobStatus.value = response.status || 'Queued'
+      jobProgress.value = response.progress || 0
+      jobMessage.value = 'Job created. Waiting for processing to begin.'
 
-    //   // prevent multiple intervals
-    //   if (interval) clearInterval(interval);
+      if (interval) clearInterval(interval)
 
-    //   interval = setInterval(async () => {
-    //     try {
-    //       const data = await getJobStatus(jobId);
+      interval = setInterval(async () => {
+        try {
+          const data = await getJobStatus(jobId.value)
+          jobStatus.value = data.status
+          jobProgress.value = data.progress || 0
+          jobMessage.value = data.message || ''
 
-    //       jobStatus.value = data.status;
+          if (data.status === 'Done' || data.status?.startsWith('Error')) {
+            clearInterval(interval)
+            interval = null
+            isAddingSong.value = false
 
-    //       if (data.status === "Done" || data.status?.startsWith("Error")) {
-    //         clearInterval(interval);
-    //         interval = null;
-    //       }
-    //     } catch (err) {
-    //       clearInterval(interval);
-    //       interval = null;
+            if (data.status === 'Done') {
+              await loadSongs()
+              $q.notify({
+                type: 'positive',
+                message: 'Song added successfully.',
+                position: 'top',
+              })
+            } else {
+              $q.notify({
+                type: 'negative',
+                message: data.message || 'Failed to add song.',
+                position: 'top',
+              })
+            }
+          }
+        } catch (err) {
+          clearInterval(interval)
+          interval = null
+          isAddingSong.value = false
+          jobStatus.value = 'Failed to fetch status'
+          jobMessage.value = 'Lost connection to the processing job.'
 
-    //       jobStatus.value = "Failed to fetch status";
+          $q.notify({
+            type: 'negative',
+            message: 'Lost connection to job status.',
+            position: 'top',
+          })
+        }
+      }, 1000)
+    } catch (err) {
+      console.error(err)
+      isAddingSong.value = false
+      jobStatus.value = 'Failed to start upload'
+      jobMessage.value = 'The server could not start processing this song.'
 
-    //       $q.notify({
-    //         type: "negative",
-    //         message: "Lost connection to job status.",
-    //         position: "top",
-    //       });
-    //     }
-    //   }, 500);
-    // } catch (err) {
-    //   console.error(err);
-
-    //   $q.notify({
-    //     type: "negative",
-    //     message: "Server error while starting job.",
-    //     position: "top",
-    //   });
-    // }
-  };
+      $q.notify({
+        type: 'negative',
+        message: 'Server error while starting job.',
+        position: 'top',
+      })
+    }
+  }
 
   onMounted(() => {
     loadSongs()

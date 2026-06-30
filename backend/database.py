@@ -16,11 +16,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, rela
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy import String, Float, Engine
 from sqlalchemy import ForeignKey, select
-from typing import List, Optional, Dict
+from typing import List
 import os
 
-from algorithmic_art_characteristics import *
-from music_feature_extraction import *
+from music_feature_extraction import get_features
+from models import MusicFeatures
 
 class Base(DeclarativeBase):
     pass
@@ -107,7 +107,7 @@ def get_song_features(song_title: str, engine):
         if song is None:
             return []
 
-        features_dict: Dict[float, List[Optional[MusicFeatures]]] = {}
+        features_dict = {}
         timeline = set()
         for stem_index, stem in enumerate(song.stems):
             rows = session.execute(

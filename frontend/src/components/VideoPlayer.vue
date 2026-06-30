@@ -38,9 +38,6 @@ const sources = computed(() => {
     }
   ]
 })
-
-defineOptions({ name: 'VideoBigPlayButtonColor' })
-
 </script>
 
 <style scoped>

@@ -6,18 +6,19 @@ Functions:
 - detect_silence(file): Detects if the entire audio file is silent.
 """
 
-import shlex
-# import os
+from pathlib import Path
 import numpy as np
 from pydub import AudioSegment, silence
 import demucs.separate
 
 model = "htdemucs_6s"
 
-def stem_song(file):
-    demucs.separate.main(shlex.split(f'-n {model} {file}'))
-    output = file.split("/")
-    return f"separated/{model}/{output[len(output) - 1]}"
+def stem_song(file: str) -> str:
+    demucs.separate.main(["-n", model, file])
+
+    infile = Path(file)
+    out_dir = Path("separated") / model / infile.stem
+    return str(out_dir)
 
 def detect_silence(y, sr):
     audio = AudioSegment(
